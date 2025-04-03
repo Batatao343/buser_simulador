@@ -3,37 +3,28 @@ Este projeto é um dashboard interativo desenvolvido em Python com Streamlit par
 
 Funcionalidades
 Upload de Planilha: Permite que o usuário faça upload de uma planilha (.csv ou .xlsx) contendo os dados de rotas, com colunas como id, rota, data, gmv e cash_repasse.
-
 Exibição dos Dados: Exibe os dados originais (baseline) para conferência.
-
 Simulação de Cancelamento: Para cada rota, o usuário pode marcar uma checkbox para cancelar a rota. Ao marcar, os valores de GMV e cash‑repasse são ajustados automaticamente conforme a lógica definida.
-
 Visualização Comparativa: Apresenta um gráfico comparativo que mostra os totais de GMV e cash‑repasse antes (baseline) e depois da simulação (com cancelamentos).
-
 Feedback Interativo: Informa o usuário sobre o status da simulação e permite confirmar os cancelamentos.
 
 Tecnologias Utilizadas
 Python 3.x
-
 Streamlit – Framework para criação de dashboards interativos.
-
 Pandas – Manipulação e análise de dados.
-
 Plotly Express – Visualização interativa de dados.
-
 SQLAlchemy (opcional) – Para integração futura com banco de dados.
 
 Pré-requisitos
 Python 3.7 ou superior instalado.
-
 Pacotes Python listados no arquivo requirements.txt.
 
 Instalação
 Clone o repositório:
 git clone https://github.com/seu-usuario/dashboard-simulacao-cancelamento.git
 cd dashboard-simulacao-cancelamento
-Crie e ative um ambiente virtual (opcional, mas recomendado):
 
+Crie e ative um ambiente virtual (opcional, mas recomendado):
 python -m venv venv
 source venv/bin/activate  # Linux/MacOS
 venv\Scripts\activate     # Windows
@@ -68,11 +59,8 @@ dashboard-simulacao-cancelamento/
 
 Possíveis Melhorias
 Integração com Banco de Dados: Consumir dados em tempo real a partir de um banco de dados utilizando SQLAlchemy ou outro conector.
-
 WebSocket: Implementar WebSocket para atualizações em tempo real sem necessidade de recarregar o dashboard.
-
 Lógica de Simulação Avançada: Refatorar as regras de negócio para refletir cenários mais realistas e complexos.
-
 Autenticação: Adicionar autenticação e controle de acesso se o dashboard manipular dados sensíveis.
 
 Contribuições
