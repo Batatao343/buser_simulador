@@ -57,9 +57,6 @@ if uploaded_file is not None:
             df_sim.at[index, "gmv"] = 0
             df_sim.at[index, "cash_repasse"] = 0
 
-    st.subheader("Tabela Final (após simulação)")
-    st.dataframe(df_sim)
-
     # Agrega os totais para o gráfico comparativo
     totals_baseline = {
         "GMV": baseline_df["gmv"].sum(),
