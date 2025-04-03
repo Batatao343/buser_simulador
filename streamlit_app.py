@@ -60,7 +60,7 @@ if uploaded_file is not None:
         # Se marcada a checkbox, atualiza os valores simulados
         if cancel:
             df.at[index, "gmv_sim"] = 0
-            df.at[index, "cash_sim"] = row["cash_repasse"] * 1.1  # Exemplo: aumento de 10% no cash
+            df.at[index, "cash_sim"] = row["cash_repasse"] = 0  # Exemplo: aumento de 10% no cash
         else:
             df.at[index, "gmv_sim"] = row["gmv"]
             df.at[index, "cash_sim"] = row["cash_repasse"]
