@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
-st.title("Dashboard de Simulação de Cancelamento de Rotas")
+st.title("Simulação de Cancelamento de Rotas")
 
-# Carregamento do arquivo (.csv ou .xlsx)
+# Carregamento do arquivo CSV ou XLSX
 uploaded_file = st.file_uploader("Carregue sua planilha (.csv ou .xlsx)", type=["csv", "xlsx"])
-
 if uploaded_file is not None:
     try:
         if uploaded_file.name.endswith('.csv'):
@@ -16,50 +14,64 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Erro ao carregar o arquivo: {e}")
         st.stop()
-
-    # Exemplo de colunas esperadas: 'id', 'rota', 'data', 'gmv', 'cash_repasse'
-    st.subheader("Dados Carregados")
-    st.dataframe(df)
-
-    # Cria uma cópia dos dados para a simulação
-    df_sim = df.copy()
-
-    st.markdown("## Selecione as rotas para cancelamento")
-    # Lista para armazenar as rotas canceladas
-    canceladas = []
-    # Itera sobre as rotas e cria uma checkbox para cada uma
+    
+    # Verifica se as colunas necessárias existem
+    required_cols = {"id", "rota", "data", "gmv", "cash_repasse"}
+    if not required_cols.issubset(df.columns):
+        st.error(f"Arquivo deve conter as colunas: {required_cols}")
+        st.stop()
+    
+    # Cria colunas para os valores simulados (inicialmente iguais ao baseline)
+    df["gmv_sim"] = df["gmv"]
+    df["cash_sim"] = df["cash_repasse"]
+    
+    st.subheader("Ajuste de Cancelamento (Marque as rotas com cash‑repasse negativo)")
+    
+    # Cabeçalho para a visualização em colunas
+    col_check, col_rota, col_data, col_gmv_base, col_cash_base, col_gmv_sim, col_cash_sim = st.columns([1,2,2,2,2,2,2])
+    with col_check: st.markdown("**Cancelar**")
+    with col_rota: st.markdown("**Rota**")
+    with col_data: st.markdown("**Data**")
+    with col_gmv_base: st.markdown("**GMV Base**")
+    with col_cash_base: st.markdown("**Cash Base**")
+    with col_gmv_sim: st.markdown("**GMV Simulado**")
+    with col_cash_sim: st.markdown("**Cash Simulado**")
+    
+    # Loop pelas linhas para exibir cada rota com seus valores e a checkbox
     for index, row in df.iterrows():
-        checkbox_label = f"Cancelar rota {row['rota']} em {row['data']} (GMV: {row['gmv']}, Cash: {row['cash_repasse']})"
-        if st.checkbox(checkbox_label, key=row['id']):
-            canceladas.append(row['id'])
-            # Lógica de simulação:
-            # Exemplo: se cancelada, GMV passa a 0 e o cash_repasse aumenta em 10% (apenas como exemplo)
-            df_sim.loc[df_sim['id'] == row['id'], 'gmv'] = 0
-            df_sim.loc[df_sim['id'] == row['id'], 'cash_repasse'] *= 1.10
-
-    st.subheader("Dados de Simulação")
-    st.dataframe(df_sim)
-
-    # Agregação dos indicadores para comparação
-    total_gmv_baseline = df['gmv'].sum()
-    total_cash_baseline = df['cash_repasse'].sum()
-
-    total_gmv_sim = df_sim['gmv'].sum()
-    total_cash_sim = df_sim['cash_repasse'].sum()
-
-    comparison_df = pd.DataFrame({
-        'Indicador': ['GMV', 'Cash-Repasse'],
-        'Baseline': [total_gmv_baseline, total_cash_baseline],
-        'Simulação': [total_gmv_sim, total_cash_sim]
-    })
-
-    st.markdown("## Gráfico Comparativo")
-    fig = px.bar(comparison_df, x='Indicador', y=['Baseline', 'Simulação'],
-                 barmode='group', title="Comparativo de Indicadores (Baseline vs. Simulação)",
-                 labels={'value': 'Valor', 'variable': 'Cenário'})
-    st.plotly_chart(fig)
-
-    st.info("A linha de base (baseline) representa os valores históricos (exibidos na tabela original). A simulação (alterada via cancelamento) está refletida nos dados e no gráfico comparativo.")
-
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1,2,2,2,2,2,2])
+        
+        # Checkbox para cancelar a rota
+        with col1:
+            cancel = st.checkbox("", key=f"cancel_{row['id']}")
+        
+        with col2:
+            st.write(row["rota"])
+        
+        with col3:
+            st.write(row["data"])
+        
+        with col4:
+            st.write(row["gmv"])
+        
+        with col5:
+            st.write(row["cash_repasse"])
+        
+        # Se marcada a checkbox, atualiza os valores simulados
+        if cancel:
+            df.at[index, "gmv_sim"] = 0
+            df.at[index, "cash_sim"] = row["cash_repasse"] * 1.1  # Exemplo: aumento de 10% no cash
+        else:
+            df.at[index, "gmv_sim"] = row["gmv"]
+            df.at[index, "cash_sim"] = row["cash_repasse"]
+        
+        with col6:
+            st.write(df.at[index, "gmv_sim"])
+        
+        with col7:
+            st.write(df.at[index, "cash_sim"])
+    
+    st.subheader("Tabela Final: Baseline vs. Simulação")
+    st.dataframe(df[["id", "rota", "data", "gmv", "cash_repasse", "gmv_sim", "cash_sim"]])
 else:
     st.info("Aguardando o upload da planilha")
