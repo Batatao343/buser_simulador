@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.title("Simulação de Cancelamento de Rotas")
 
@@ -21,57 +22,66 @@ if uploaded_file is not None:
         st.error(f"Arquivo deve conter as colunas: {required_cols}")
         st.stop()
     
-    # Cria colunas para os valores simulados (inicialmente iguais ao baseline)
-    df["gmv_sim"] = df["gmv"]
-    df["cash_sim"] = df["cash_repasse"]
+    # Guarda uma cópia dos dados originais para o gráfico baseline
+    baseline_df = df.copy()
+    # Cria uma cópia para a simulação (será atualizada)
+    df_sim = df.copy()
+
+    st.subheader("Selecione as rotas para cancelamento (selecione as que deseja cancelar)")
     
-    st.subheader("Ajuste de Cancelamento (Marque as rotas com cash‑repasse negativo)")
+    # Exibe o cabeçalho da tabela com colunas definidas
+    cols = st.columns([1,2,2,2,2])
+    cols[0].markdown("**Cancelar**")
+    cols[1].markdown("**Rota**")
+    cols[2].markdown("**Data**")
+    cols[3].markdown("**GMV**")
+    cols[4].markdown("**Cash‑Repasse**")
     
-    # Cabeçalho para a visualização em colunas
-    col_check, col_rota, col_data, col_gmv_base, col_cash_base, col_gmv_sim, col_cash_sim = st.columns([1,2,2,2,2,2,2])
-    with col_check: st.markdown("**Cancelar**")
-    with col_rota: st.markdown("**Rota**")
-    with col_data: st.markdown("**Data**")
-    with col_gmv_base: st.markdown("**GMV Base**")
-    with col_cash_base: st.markdown("**Cash Base**")
-    with col_gmv_sim: st.markdown("**GMV Simulado**")
-    with col_cash_sim: st.markdown("**Cash Simulado**")
-    
-    # Loop pelas linhas para exibir cada rota com seus valores e a checkbox
-    for index, row in df.iterrows():
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1,2,2,2,2,2,2])
+    # Loop pelas linhas para exibir cada rota com seus dados e checkbox
+    for index, row in df_sim.iterrows():
+        c1, c2, c3, c4, c5 = st.columns([1,2,2,2,2])
         
-        # Checkbox para cancelar a rota
-        with col1:
+        with c1:
             cancel = st.checkbox("", key=f"cancel_{row['id']}")
-        
-        with col2:
+        with c2:
             st.write(row["rota"])
-        
-        with col3:
+        with c3:
             st.write(row["data"])
-        
-        with col4:
+        with c4:
             st.write(row["gmv"])
-        
-        with col5:
+        with c5:
             st.write(row["cash_repasse"])
         
-        # Se marcada a checkbox, atualiza os valores simulados
+        # Se o usuário marcar o cancelamento, atualiza os valores diretamente
         if cancel:
-            df.at[index, "gmv_sim"] = 0
-            df.at[index, "cash_sim"] = row["cash_repasse"] = 0  # Exemplo: aumento de 10% no cash
-        else:
-            df.at[index, "gmv_sim"] = row["gmv"]
-            df.at[index, "cash_sim"] = row["cash_repasse"]
-        
-        with col6:
-            st.write(df.at[index, "gmv_sim"])
-        
-        with col7:
-            st.write(df.at[index, "cash_sim"])
+            df_sim.at[index, "gmv"] = 0
+            df_sim.at[index, "cash_repasse"] = 0
+
+    st.subheader("Tabela Final (após simulação)")
+    st.dataframe(df_sim)
+
+    # Agrega os totais para o gráfico comparativo
+    totals_baseline = {
+        "GMV": baseline_df["gmv"].sum(),
+        "Cash‑Repasse": baseline_df["cash_repasse"].sum()
+    }
+    totals_sim = {
+        "GMV": df_sim["gmv"].sum(),
+        "Cash‑Repasse": df_sim["cash_repasse"].sum()
+    }
     
-    st.subheader("Tabela Final: Baseline vs. Simulação")
-    st.dataframe(df[["id", "rota", "data", "gmv", "cash_repasse", "gmv_sim", "cash_sim"]])
+    totals_df = pd.DataFrame({
+        "Indicador": ["GMV", "Cash‑Repasse"],
+        "Baseline": [totals_baseline["GMV"], totals_baseline["Cash‑Repasse"]],
+        "Simulação": [totals_sim["GMV"], totals_sim["Cash‑Repasse"]]
+    })
+    
+    st.subheader("Gráfico Comparativo dos Totais")
+    fig = px.bar(totals_df, x="Indicador", y=["Baseline", "Simulação"],
+                 barmode="group",
+                 title="Totais: Baseline vs. Simulação",
+                 labels={"value": "Total", "variable": "Cenário"})
+    st.plotly_chart(fig)
 else:
     st.info("Aguardando o upload da planilha")
+
