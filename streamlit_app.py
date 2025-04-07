@@ -20,15 +20,16 @@ def gerar_dados():
     datas = pd.date_range(start=datetime.now().date(), periods=31, freq="D")
     num_rotas = 20
     rotas = [f"R{i+1}" for i in range(num_rotas)]
-    regionais = [f"Regional {(i % 3) + 1}" for i in range(num_rotas)]  # Exemplo de regionais
+    regionais = [f"Regional {(i % 3) + 1}" for i in range(num_rotas)]
 
     dados = []
     for data in datas:
         for i, rota in enumerate(rotas):
-            gmv_baseline = np.random.randint(500, 2000)  # Faixa de 500 a 2000
-            cash_baseline = np.random.randint(-500, 1000)  # Faixa de -500 a 1000
+            gmv_baseline = np.random.randint(500, 2000)  # faixa 500 a 2000
+            cash_baseline = np.random.randint(-500, 1000)  # faixa -500 a 1000
 
-            # Realizado com base no baseline + ruído
+            # Para simulação, o realizado é definido para datas passadas e o previsto para datas futuras.
+            # Aqui, vamos gerar "realizado" como valor com ruído, e usaremos o baseline como previsão.
             gmv_realizado = gmv_baseline + np.random.randint(-100, 100)
             cash_realizado = cash_baseline + np.random.randint(-50, 50)
 
@@ -45,6 +46,18 @@ def gerar_dados():
     df = pd.DataFrame(dados)
     df["Dia_da_Semana"] = df["Data"].dt.day_name()
     df["Dia_do_Mes"] = df["Data"].dt.day
+    return df
+
+# -------------------------
+# Define colunas de valor (Realizado/Previsto)
+# -------------------------
+def definir_valores(df, cutoff):
+    """
+    Para datas anteriores ao cutoff, usa valor realizado;
+    para datas a partir do cutoff, usa o valor previsto (aqui igual ao baseline).
+    """
+    df["GMV_valor"] = np.where(df["Data"] < cutoff, df["GMV_realizado"], df["GMV_baseline"])
+    df["Cash_valor"] = np.where(df["Data"] < cutoff, df["Cash_realizado"], df["Cash_baseline"])
     return df
 
 # -------------------------
@@ -97,6 +110,12 @@ else:
         st.stop()
 
 # -------------------------
+# Definir o cutoff: 48 horas a partir de agora
+# -------------------------
+cutoff = datetime.now() + timedelta(hours=48)
+df = definir_valores(df, cutoff)
+
+# -------------------------
 # Seleção de Rotas para Cancelamento
 # -------------------------
 st.sidebar.subheader("Seleção de Rotas para Cancelamento")
@@ -104,18 +123,18 @@ rotas_disponiveis = df["Rota"].unique().tolist()
 rotas_canceladas = st.sidebar.multiselect("Selecione as rotas a cancelar:", rotas_disponiveis)
 
 # -------------------------
-# Filtro para o período de check (72 a 48h antes da saída)
+# Filtro para o período de check: de 48h (cutoff) a 72h a partir de agora
 # -------------------------
 data_atual = datetime.now()
-inicio_check = data_atual + timedelta(hours=48)
+inicio_check = data_atual + timedelta(hours=48)  # igual a cutoff
 fim_check = data_atual + timedelta(hours=72)
 
 def agregar_indicadores(df_filtrado):
     agg = df_filtrado.groupby("Data").agg({
         "GMV_baseline": "sum",
-        "GMV_realizado": "sum",
+        "GMV_valor": "sum",
         "Cash_baseline": "sum",
-        "Cash_realizado": "sum"
+        "Cash_valor": "sum"
     }).reset_index()
     agg["Dia_da_Semana"] = agg["Data"].dt.day_name()
     agg["Dia_do_Mes"] = agg["Data"].dt.day
@@ -124,7 +143,7 @@ def agregar_indicadores(df_filtrado):
 # Dados para baseline (todos os dias, sem cancelamento)
 df_agg_total = agregar_indicadores(df)
 
-# Dados de simulação: somente para o período de check, excluindo rotas canceladas
+# Dados de simulação: somente para o período de check, excluindo as rotas canceladas
 df_check = df[(df["Data"] >= inicio_check) & (df["Data"] <= fim_check)]
 if rotas_canceladas:
     df_check = df_check[~df_check["Rota"].isin(rotas_canceladas)]
@@ -141,25 +160,23 @@ df_agg_total = calcular_meta_diluida(df_agg_total, meta_mensal_gmv, meta_mensal_
 df_agg_sim = calcular_meta_diluida(df_agg_sim, meta_mensal_gmv, meta_mensal_cash)
 
 # -------------------------
-# Cálculo da Diferença (Sim - Realizado)
+# Cálculo da Diferença (Simulação - Realizado/Previsto) para os dias de previsão (apenas para o período de check)
 # -------------------------
-# Para GMV:
 df_diff_gmv = pd.merge(
-    df_agg_total[["Data", "GMV_realizado"]],
-    df_agg_sim[["Data", "GMV_realizado"]].rename(columns={"GMV_realizado": "GMV_sim"}),
+    df_agg_total[["Data", "GMV_valor"]],
+    df_agg_sim[["Data", "GMV_valor"]].rename(columns={"GMV_valor": "GMV_sim"}),
     on="Data",
     how="left"
 )
-df_diff_gmv["GMV_diferenca"] = df_diff_gmv["GMV_sim"] - df_diff_gmv["GMV_realizado"]
+df_diff_gmv["GMV_diferenca"] = df_diff_gmv["GMV_sim"] - df_diff_gmv["GMV_valor"]
 
-# Para Cash:
 df_diff_cash = pd.merge(
-    df_agg_total[["Data", "Cash_realizado"]],
-    df_agg_sim[["Data", "Cash_realizado"]].rename(columns={"Cash_realizado": "Cash_sim"}),
+    df_agg_total[["Data", "Cash_valor"]],
+    df_agg_sim[["Data", "Cash_valor"]].rename(columns={"Cash_valor": "Cash_sim"}),
     on="Data",
     how="left"
 )
-df_diff_cash["Cash_diferenca"] = df_diff_cash["Cash_sim"] - df_diff_cash["Cash_realizado"]
+df_diff_cash["Cash_diferenca"] = df_diff_cash["Cash_sim"] - df_diff_cash["Cash_valor"]
 
 # -------------------------
 # Gráficos Interativos
@@ -187,39 +204,38 @@ fig_gmv.add_trace(go.Scatter(
     opacity=0.8
 ))
 
-# Realizado (azul escuro)
+# Realizado/Previsto (azul escuro)
 fig_gmv.add_trace(go.Scatter(
-    x=df_agg_total["Data"], y=df_agg_total["GMV_realizado"],
+    x=df_agg_total["Data"], y=df_agg_total["GMV_valor"],
     mode="lines",
-    name="Realizado",
+    name="Realizado/Previsto",
     line=dict(color="#00008B", width=3)
 ))
 
 # Simulação (vermelho), apenas para o período de check
 fig_gmv.add_trace(go.Scatter(
-    x=df_agg_sim["Data"], y=df_agg_sim["GMV_realizado"],
+    x=df_agg_sim["Data"], y=df_agg_sim["GMV_valor"],
     mode="lines",
     name="Simulação (Canceladas)",
     line=dict(color="#FF0000", width=3)
 ))
 
-# Diferença (Sim - Realizado), linha pontilhada vermelha
+# Diferença (Simulação - Realizado/Previsto), linha pontilhada vermelha
 fig_gmv.add_trace(go.Scatter(
     x=df_diff_gmv["Data"],
     y=df_diff_gmv["GMV_diferenca"],
     mode="lines",
-    name="Diferença (Sim - Realizado)",
+    name="Diferença (Sim - Real)",
     line=dict(color="#FF0000", width=2, dash="dot")
 ))
 
 fig_gmv.update_layout(
-    title="GMV - Baseline, Meta, Realizado e Simulação",
+    title="GMV - Baseline, Meta, Realizado/Previsto, Simulação e Diferença",
     xaxis_title="Data",
     yaxis_title="GMV",
     hovermode="x unified"
 )
 
-# Formata o hover para duas casas decimais
 for trace in fig_gmv.data:
     trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
 
@@ -246,33 +262,33 @@ fig_cash.add_trace(go.Scatter(
     opacity=0.8
 ))
 
-# Realizado (azul escuro)
+# Realizado/Previsto (azul escuro)
 fig_cash.add_trace(go.Scatter(
-    x=df_agg_total["Data"], y=df_agg_total["Cash_realizado"],
+    x=df_agg_total["Data"], y=df_agg_total["Cash_valor"],
     mode="lines",
-    name="Realizado",
+    name="Realizado/Previsto",
     line=dict(color="#00008B", width=3)
 ))
 
 # Simulação (vermelho), apenas para o período de check
 fig_cash.add_trace(go.Scatter(
-    x=df_agg_sim["Data"], y=df_agg_sim["Cash_realizado"],
+    x=df_agg_sim["Data"], y=df_agg_sim["Cash_valor"],
     mode="lines",
     name="Simulação (Canceladas)",
     line=dict(color="#FF0000", width=3)
 ))
 
-# Diferença (Sim - Realizado), linha pontilhada vermelha
+# Diferença (Sim - Real), linha pontilhada vermelha
 fig_cash.add_trace(go.Scatter(
     x=df_diff_cash["Data"],
     y=df_diff_cash["Cash_diferenca"],
     mode="lines",
-    name="Diferença (Sim - Realizado)",
+    name="Diferença (Sim - Real)",
     line=dict(color="#FF0000", width=2, dash="dot")
 ))
 
 fig_cash.update_layout(
-    title="Cash-Repasse - Baseline, Meta, Realizado e Simulação",
+    title="Cash-Repasse - Baseline, Meta, Realizado/Previsto, Simulação e Diferença",
     xaxis_title="Data",
     yaxis_title="Cash-Repasse",
     hovermode="x unified"
@@ -304,12 +320,11 @@ if st.sidebar.button("Visualizar Comparação de Cenários"):
         st.subheader("Comparação de Cenários Salvos")
         for i, cen in enumerate(st.session_state.cenarios):
             st.write(f"**Cenário {i+1}:** Rotas Canceladas: {', '.join(cen['rotas_canceladas']) if cen['rotas_canceladas'] else 'Nenhuma'}")
-            st.dataframe(cen["data_sim"][["Data", "GMV_realizado", "Cash_realizado"]])
+            st.dataframe(cen["data_sim"][["Data", "GMV_valor", "Cash_valor"]])
     else:
         st.sidebar.info("Nenhum cenário salvo ainda.")
 
 st.info("Passe o mouse sobre os gráficos para visualizar os valores com duas casas decimais.")
-
 
 
 
