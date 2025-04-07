@@ -93,12 +93,6 @@ else:
         st.stop()
 
 # -------------------------
-# Exibir os dados (opcional)
-# -------------------------
-st.subheader("Dados Carregados")
-st.dataframe(df.head(10))
-
-# -------------------------
 # Seleção de Rotas para Cancelamento
 # -------------------------
 st.sidebar.subheader("Seleção de Rotas para Cancelamento")
