@@ -83,9 +83,6 @@ else:
         st.info("Carregue uma planilha para prosseguir.")
         st.stop()
 
-st.subheader("Dados Carregados")
-st.dataframe(df.head(10))
-
 # -------------------------
 # Seleção de Rotas para Cancelamento
 # -------------------------
