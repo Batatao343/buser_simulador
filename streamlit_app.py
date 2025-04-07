@@ -30,16 +30,15 @@ def gerar_dados():
     
     num_rotas = 20
     rotas = [f"R{i+1}" for i in range(num_rotas)]
-    # Exemplo de regionais: cíclico entre Regional 1, 2 e 3
+    # Define regionais cíclicos entre Regional 1, 2 e 3
     regionais = [f"Regional {(i % 3) + 1}" for i in range(num_rotas)]
 
     dados = []
     for data in datas:
         for i, rota in enumerate(rotas):
-            gmv_baseline = np.random.randint(500, 2000)   # faixa de 500 a 2000
-            cash_baseline = np.random.randint(-500, 1000)   # faixa de -500 a 1000
-
-            # Para datas passadas, gera realizado com ruído
+            gmv_baseline = np.random.randint(500, 2000)
+            cash_baseline = np.random.randint(-500, 1000)
+            # Para datas passadas, gera realizado com ruído; para datas futuras, usaremos o baseline
             gmv_realizado = gmv_baseline + np.random.randint(-100, 100)
             cash_realizado = cash_baseline + np.random.randint(-50, 50)
 
@@ -66,9 +65,9 @@ def definir_valores(df, cutoff):
     Para datas anteriores ao cutoff, usa os valores realizados;
     para datas a partir do cutoff, usa o valor previsto (igual ao baseline).
     
-    Gera as colunas:
-      - GMV_valor: usada na linha "Realizado/Previsto" para GMV.
-      - Cash_valor: usada na linha "Realizado/Previsto" para Cash.
+    Cria as colunas:
+      - GMV_valor: para a linha "Realizado/Previsto" (GMV).
+      - Cash_valor: para a linha "Realizado/Previsto" (Cash).
     """
     df["GMV_valor"] = np.where(df["Data"] < cutoff, df["GMV_realizado"], df["GMV_baseline"])
     df["Cash_valor"] = np.where(df["Data"] < cutoff, df["Cash_realizado"], df["Cash_baseline"])
@@ -82,7 +81,7 @@ def calcular_meta_diluida(df_agg, meta_mensal_gmv, meta_mensal_cash):
     Calcula a meta diluída com base nos pesos dos valores históricos:
       - Peso_GMV = GMV_baseline / soma(GMV_baseline)
       - GMV_meta_diluida = meta_mensal_gmv * Peso_GMV
-    Similarmente para Cash:
+    E para Cash:
       - Peso_Cash = Cash_baseline / soma(Cash_baseline)
       - Cash_meta_diluida = meta_mensal_cash * Peso_Cash
     """
@@ -108,7 +107,7 @@ def calcular_meta_diluida(df_agg, meta_mensal_gmv, meta_mensal_cash):
 st.title("Simulação de Cancelamento de Rotas")
 st.sidebar.header("Configurações")
 
-# Escolha: usar dados de exemplo ou carregar arquivo
+# Permite escolher entre usar dados de exemplo ou carregar arquivo
 usar_dados_exemplo = st.sidebar.checkbox("Usar dados de exemplo", value=True)
 if usar_dados_exemplo:
     df = gerar_dados()
@@ -174,7 +173,7 @@ def agregar_indicadores(df_filtrado):
 # Dados para baseline: utiliza todos os dias (sem cancelamento)
 df_agg_total = agregar_indicadores(df)
 
-# Dados de simulação: utiliza apenas os dados do período de check e exclui as rotas canceladas
+# Dados de simulação: utiliza somente os dados do período de check e exclui as rotas canceladas
 df_check = df[(df["Data"] >= inicio_check) & (df["Data"] <= fim_check)]
 if rotas_canceladas:
     df_check = df_check[~df_check["Rota"].isin(rotas_canceladas)]
@@ -217,8 +216,8 @@ df_diff_cash["Cash_diferenca"] = df_diff_cash["Cash_sim"] - df_diff_cash["Cash_v
 # =============================================================================
 st.subheader("Gráficos Interativos")
 
-# Converter "hoje" para pd.Timestamp para evitar erros no add_vline
-hoje = pd.Timestamp(datetime.now().date())
+# Converter a data de hoje para um objeto datetime (não apenas Timestamp)
+hoje = pd.Timestamp(datetime.now().date()).to_pydatetime()
 
 # -----------------
 # Gráfico de GMV
@@ -310,7 +309,7 @@ fig_cash.add_shape(
     fillcolor="gray", opacity=0.2, layer="below", line_width=0
 )
 
-# Adiciona linha vertical no dia de hoje
+# Adiciona linha vertical para o dia de hoje
 fig_cash.add_vline(
     x=hoje,
     line=dict(color="black", dash="dash"),
@@ -352,7 +351,7 @@ fig_cash.add_trace(go.Scatter(
     line=dict(color="#FF0000", width=3)
 ))
 
-# Linha de Diferença (Sim - Real), como linha pontilhada vermelha
+# Linha de Diferença (Sim - Real), linha pontilhada vermelha
 fig_cash.add_trace(go.Scatter(
     x=df_diff_cash["Data"],
     y=df_diff_cash["Cash_diferenca"],
@@ -398,6 +397,7 @@ if st.sidebar.button("Visualizar Comparação de Cenários"):
         st.sidebar.info("Nenhum cenário salvo ainda.")
 
 st.info("Passe o mouse sobre os gráficos para visualizar os valores com duas casas decimais.")
+
 
 
 
