@@ -26,9 +26,9 @@ def gerar_dados():
     dados = []
     for data in datas:
         for i, rota in enumerate(rotas):
-            gmv_baseline = np.random.randint(900, 1200)  # Faixa de 900 a 1200
+            gmv_baseline = np.random.randint(200, 1200)  # Faixa de 900 a 1200
             # Alguns valores de Cash podem ser negativos
-            cash_baseline = np.random.randint(-100, 500)
+            cash_baseline = np.random.randint(-300, 1000)
 
             # Realizado com base no baseline + algum ruído
             gmv_realizado = gmv_baseline + np.random.randint(-100, 100)
