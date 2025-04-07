@@ -4,3 +4,4 @@ plotly
 SQLAlchemy
 openpyxl
 Pillow
+numpy
