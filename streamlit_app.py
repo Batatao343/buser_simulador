@@ -81,7 +81,7 @@ def calcular_meta_diluida(df_agg, meta_mensal_gmv, meta_mensal_cash):
     Calcula a meta diluída com base nos pesos dos valores históricos:
       - Peso_GMV = GMV_baseline / soma(GMV_baseline)
       - GMV_meta_diluida = meta_mensal_gmv * Peso_GMV
-    E para Cash:
+    Similarmente para Cash:
       - Peso_Cash = Cash_baseline / soma(Cash_baseline)
       - Cash_meta_diluida = meta_mensal_cash * Peso_Cash
     """
@@ -216,15 +216,15 @@ df_diff_cash["Cash_diferenca"] = df_diff_cash["Cash_sim"] - df_diff_cash["Cash_v
 # =============================================================================
 st.subheader("Gráficos Interativos")
 
-# Converter a data de hoje para um objeto datetime (não apenas Timestamp)
-hoje = pd.Timestamp(datetime.now().date()).to_pydatetime()
+# Converter o dia de hoje para string no formato ISO para evitar erros na add_vline
+hoje_str = datetime.now().date().isoformat()
 
 # -----------------
 # Gráfico de GMV
 # -----------------
 fig_gmv = go.Figure()
 
-# Adiciona faixa cinza entre 72h e 48h a partir de agora
+# Adiciona faixa cinza (região sombreada) entre 72h e 48h a partir de agora
 fig_gmv.add_shape(
     type="rect",
     x0=inicio_check, x1=fim_check, y0=0, y1=1,
@@ -232,9 +232,9 @@ fig_gmv.add_shape(
     fillcolor="gray", opacity=0.2, layer="below", line_width=0
 )
 
-# Adiciona linha vertical tracejada no dia de hoje
+# Adiciona linha vertical tracejada no dia de hoje (passado como string)
 fig_gmv.add_vline(
-    x=hoje,
+    x=hoje_str,
     line=dict(color="black", dash="dash"),
     annotation_text="Hoje",
     annotation_position="top left"
@@ -309,9 +309,9 @@ fig_cash.add_shape(
     fillcolor="gray", opacity=0.2, layer="below", line_width=0
 )
 
-# Adiciona linha vertical para o dia de hoje
+# Adiciona linha vertical para o dia de hoje (passado como string)
 fig_cash.add_vline(
-    x=hoje,
+    x=hoje_str,
     line=dict(color="black", dash="dash"),
     annotation_text="Hoje",
     annotation_position="top left"
