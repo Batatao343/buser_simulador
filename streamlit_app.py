@@ -15,8 +15,6 @@ def gerar_dados():
     Gera dados para 31 dias (janeiro), com 20 rotas.
     GMV_baseline varia de 900 a 1200 por rota/dia,
     Cash_baseline varia de -100 a 500, podendo ficar negativo.
-    Assim, somando 20 rotas, o total diário fica numa faixa próxima
-    para que a meta mensal (inserida pelo usuário) fique coerente.
     """
     datas = pd.date_range(start="2023-01-01", end="2023-01-31", freq="D")
     num_rotas = 20
@@ -26,12 +24,11 @@ def gerar_dados():
     dados = []
     for data in datas:
         for i, rota in enumerate(rotas):
-            gmv_baseline = np.random.randint(200, 1200)  # Faixa de 900 a 1200
-            # Alguns valores de Cash podem ser negativos
-            cash_baseline = np.random.randint(-300, 1000)
+            gmv_baseline = np.random.randint(500, 1600)  # Faixa de 900 a 1200
+            cash_baseline = np.random.randint(-300, 600)  # Pode ser negativo
 
-            # Realizado com base no baseline + algum ruído
-            gmv_realizado = gmv_baseline + np.random.randint(-300, 300)
+            # Realizado com base no baseline + ruído
+            gmv_realizado = gmv_baseline + np.random.randint(-200, 200)
             cash_realizado = cash_baseline + np.random.randint(-100, 100)
 
             dados.append({
@@ -72,7 +69,7 @@ def calcular_meta_diluida(df_agg, meta_mensal_gmv, meta_mensal_cash):
     return df_agg
 
 # -------------------------
-# Carregando os dados (usando dados de exemplo ou upload)
+# Carregando os dados
 # -------------------------
 st.title("Simulação de Cancelamento de Rotas")
 
@@ -143,11 +140,32 @@ df_agg_total = calcular_meta_diluida(df_agg_total, meta_mensal_gmv, meta_mensal_
 df_agg_sim = calcular_meta_diluida(df_agg_sim, meta_mensal_gmv, meta_mensal_cash)
 
 # -------------------------
+# Cálculo da Diferença (Sim - Realizado) para visualização
+# -------------------------
+# Vamos mesclar df_agg_total e df_agg_sim para GMV:
+df_diff_gmv = pd.merge(
+    df_agg_total[["Data", "GMV_realizado"]],
+    df_agg_sim[["Data", "GMV_realizado"]].rename(columns={"GMV_realizado": "GMV_sim"}),
+    on="Data",
+    how="left"
+)
+df_diff_gmv["GMV_diferenca"] = df_diff_gmv["GMV_sim"] - df_diff_gmv["GMV_realizado"]
+
+# O mesmo para Cash:
+df_diff_cash = pd.merge(
+    df_agg_total[["Data", "Cash_realizado"]],
+    df_agg_sim[["Data", "Cash_realizado"]].rename(columns={"Cash_realizado": "Cash_sim"}),
+    on="Data",
+    how="left"
+)
+df_diff_cash["Cash_diferenca"] = df_diff_cash["Cash_sim"] - df_diff_cash["Cash_realizado"]
+
+# -------------------------
 # Gráficos Interativos
 # -------------------------
 st.subheader("Gráficos Interativos")
 
-# Gráfico de GMV
+# 1) Gráfico de GMV
 fig_gmv = go.Figure()
 
 # Baseline Histórico (cinza, tracejado)
@@ -184,15 +202,29 @@ fig_gmv.add_trace(go.Scatter(
     line=dict(color="#FF0000", width=3)
 ))
 
+# Diferença (Sim - Realizado), linha pontilhada vermelha
+fig_gmv.add_trace(go.Scatter(
+    x=df_diff_gmv["Data"],
+    y=df_diff_gmv["GMV_diferenca"],
+    mode="lines",
+    name="Diferença (Sim - Realizado)",
+    line=dict(color="#FF0000", width=2, dash="dot")
+))
+
 fig_gmv.update_layout(
     title="GMV - Baseline, Meta, Realizado e Simulação",
     xaxis_title="Data",
     yaxis_title="GMV",
     hovermode="x unified"
 )
+
+# Formato do hover (duas casas decimais)
+for trace in fig_gmv.data:
+    trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
+
 st.plotly_chart(fig_gmv, use_container_width=True)
 
-# Gráfico de Cash-Repasse
+# 2) Gráfico de Cash-Repasse
 fig_cash = go.Figure()
 
 # Baseline Histórico (cinza, tracejado)
@@ -229,12 +261,26 @@ fig_cash.add_trace(go.Scatter(
     line=dict(color="#FF0000", width=3)
 ))
 
+# Diferença (Sim - Realizado), linha pontilhada vermelha
+fig_cash.add_trace(go.Scatter(
+    x=df_diff_cash["Data"],
+    y=df_diff_cash["Cash_diferenca"],
+    mode="lines",
+    name="Diferença (Sim - Realizado)",
+    line=dict(color="#FF0000", width=2, dash="dot")
+))
+
 fig_cash.update_layout(
     title="Cash-Repasse - Baseline, Meta, Realizado e Simulação",
     xaxis_title="Data",
     yaxis_title="Cash-Repasse",
     hovermode="x unified"
 )
+
+# Formato do hover (duas casas decimais)
+for trace in fig_cash.data:
+    trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
+
 st.plotly_chart(fig_cash, use_container_width=True)
 
 # -------------------------
@@ -262,7 +308,7 @@ if st.sidebar.button("Visualizar Comparação de Cenários"):
     else:
         st.sidebar.info("Nenhum cenário salvo ainda.")
 
-st.info("Passe o mouse sobre os gráficos para visualizar os valores interativos.")
+st.info("Passe o mouse sobre os gráficos para visualizar os valores com duas casas decimais.")
 
 
 
