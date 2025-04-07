@@ -13,16 +13,12 @@ st.set_page_config(page_title="Simulação de Cancelamento de Rotas", layout="wi
 @st.cache_data
 def gerar_dados():
     """
-    Gera dados para 31 dias: 15 dias no passado e 16 dias no futuro a partir de hoje,
+    Gera dados de teste para 31 dias: 15 dias no passado e 16 dias no futuro a partir de hoje,
     para 20 rotas.
     
     - GMV_baseline: valores aleatórios entre 500 e 2000 por rota/dia.
     - Cash_baseline: valores aleatórios entre -500 e 1000 (permitindo valores negativos).
     - GMV_realizado e Cash_realizado: gerados com base no baseline com algum ruído.
-    
-    Esses dados servirão para compor a linha "Realizado/Previsto", onde:
-      - Para datas anteriores ao cutoff, usamos os valores realizados.
-      - Para datas a partir do cutoff, usamos o baseline como previsão.
     """
     num_dias_past = 15   # dias no passado
     num_dias_future = 16 # dias no futuro
@@ -38,13 +34,12 @@ def gerar_dados():
     regionais = [f"Regional {(i % 3) + 1}" for i in range(num_rotas)]
 
     dados = []
-    # Para cada data e cada rota, gera os valores
     for data in datas:
         for i, rota in enumerate(rotas):
             gmv_baseline = np.random.randint(500, 2000)   # faixa de 500 a 2000
             cash_baseline = np.random.randint(-500, 1000)   # faixa de -500 a 1000
 
-            # Valor realizado com ruído (para datas passadas)
+            # Para datas passadas, gera realizado com ruído
             gmv_realizado = gmv_baseline + np.random.randint(-100, 100)
             cash_realizado = cash_baseline + np.random.randint(-50, 50)
 
@@ -59,7 +54,6 @@ def gerar_dados():
             })
 
     df = pd.DataFrame(dados)
-    # Adiciona colunas auxiliares para o dia da semana e o dia do mês
     df["Dia_da_Semana"] = df["Data"].dt.day_name()
     df["Dia_do_Mes"] = df["Data"].dt.day
     return df
@@ -72,9 +66,9 @@ def definir_valores(df, cutoff):
     Para datas anteriores ao cutoff, usa os valores realizados;
     para datas a partir do cutoff, usa o valor previsto (igual ao baseline).
     
-    Isso gera as colunas:
-      - GMV_valor: utilizada na linha "Realizado/Previsto" para GMV.
-      - Cash_valor: utilizada na linha "Realizado/Previsto" para Cash.
+    Gera as colunas:
+      - GMV_valor: usada na linha "Realizado/Previsto" para GMV.
+      - Cash_valor: usada na linha "Realizado/Previsto" para Cash.
     """
     df["GMV_valor"] = np.where(df["Data"] < cutoff, df["GMV_realizado"], df["GMV_baseline"])
     df["Cash_valor"] = np.where(df["Data"] < cutoff, df["Cash_realizado"], df["Cash_baseline"])
@@ -114,9 +108,8 @@ def calcular_meta_diluida(df_agg, meta_mensal_gmv, meta_mensal_cash):
 st.title("Simulação de Cancelamento de Rotas")
 st.sidebar.header("Configurações")
 
-# Opção para usar dados de exemplo ou carregar arquivo
+# Escolha: usar dados de exemplo ou carregar arquivo
 usar_dados_exemplo = st.sidebar.checkbox("Usar dados de exemplo", value=True)
-
 if usar_dados_exemplo:
     df = gerar_dados()
 else:
@@ -143,7 +136,7 @@ cutoff = datetime.now() + timedelta(hours=48)
 df = definir_valores(df, cutoff)
 
 # =============================================================================
-# Seleção de rotas para cancelamento
+# Seleção de rotas para cancelamento via sidebar
 # =============================================================================
 st.sidebar.subheader("Seleção de Rotas para Cancelamento")
 rotas_disponiveis = df["Rota"].unique().tolist()
@@ -161,9 +154,9 @@ fim_check = data_atual + timedelta(hours=72)
 # =============================================================================
 def agregar_indicadores(df_filtrado):
     """
-    Agrupa os dados por data, somando:
+    Agrupa os dados por Data, somando os valores de:
       - GMV_baseline, GMV_valor, Cash_baseline e Cash_valor.
-    Adiciona também colunas para o dia da semana e do mês.
+    Adiciona colunas para Dia_da_Semana e Dia_do_Mes.
     """
     agg = df_filtrado.groupby("Data").agg({
         "GMV_baseline": "sum",
@@ -178,10 +171,10 @@ def agregar_indicadores(df_filtrado):
 # =============================================================================
 # Agregação dos dados
 # =============================================================================
-# Dados para baseline: todos os dias (sem cancelamento)
+# Dados para baseline: utiliza todos os dias (sem cancelamento)
 df_agg_total = agregar_indicadores(df)
 
-# Dados de simulação: apenas para o período de check, excluindo rotas canceladas
+# Dados de simulação: utiliza apenas os dados do período de check e exclui as rotas canceladas
 df_check = df[(df["Data"] >= inicio_check) & (df["Data"] <= fim_check)]
 if rotas_canceladas:
     df_check = df_check[~df_check["Rota"].isin(rotas_canceladas)]
@@ -199,7 +192,7 @@ df_agg_total = calcular_meta_diluida(df_agg_total, meta_mensal_gmv, meta_mensal_
 df_agg_sim = calcular_meta_diluida(df_agg_sim, meta_mensal_gmv, meta_mensal_cash)
 
 # =============================================================================
-# Cálculo da diferença entre Simulação e Realizado/Previsto para o período de check
+# Cálculo da diferença entre Simulação e Realizado/Previsto (para o período de check)
 # =============================================================================
 # Para GMV:
 df_diff_gmv = pd.merge(
@@ -224,15 +217,15 @@ df_diff_cash["Cash_diferenca"] = df_diff_cash["Cash_sim"] - df_diff_cash["Cash_v
 # =============================================================================
 st.subheader("Gráficos Interativos")
 
-# Define a data de hoje (apenas a data, sem hora)
-hoje = datetime.now().date()
+# Converter "hoje" para pd.Timestamp para evitar erros no add_vline
+hoje = pd.Timestamp(datetime.now().date())
 
 # -----------------
 # Gráfico de GMV
 # -----------------
 fig_gmv = go.Figure()
 
-# Adiciona uma faixa cinza (região sombreada) entre 72h e 48h a partir de agora
+# Adiciona faixa cinza entre 72h e 48h a partir de agora
 fig_gmv.add_shape(
     type="rect",
     x0=inicio_check, x1=fim_check, y0=0, y1=1,
@@ -240,7 +233,7 @@ fig_gmv.add_shape(
     fillcolor="gray", opacity=0.2, layer="below", line_width=0
 )
 
-# Adiciona uma linha vertical tracejada no dia de hoje
+# Adiciona linha vertical tracejada no dia de hoje
 fig_gmv.add_vline(
     x=hoje,
     line=dict(color="black", dash="dash"),
@@ -282,7 +275,7 @@ fig_gmv.add_trace(go.Scatter(
     line=dict(color="#FF0000", width=3)
 ))
 
-# Linha de Diferença (Simulação - Realizado/Previsto), como linha pontilhada
+# Linha de Diferença (Simulação - Realizado/Previsto), como linha pontilhada vermelha
 fig_gmv.add_trace(go.Scatter(
     x=df_diff_gmv["Data"],
     y=df_diff_gmv["GMV_diferenca"],
@@ -298,7 +291,7 @@ fig_gmv.update_layout(
     hovermode="x unified"
 )
 
-# Formata o hover para exibir duas casas decimais
+# Formata o hover para exibir valores com duas casas decimais
 for trace in fig_gmv.data:
     trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
 
@@ -359,7 +352,7 @@ fig_cash.add_trace(go.Scatter(
     line=dict(color="#FF0000", width=3)
 ))
 
-# Linha de Diferença (Sim - Real), linha pontilhada
+# Linha de Diferença (Sim - Real), como linha pontilhada vermelha
 fig_cash.add_trace(go.Scatter(
     x=df_diff_cash["Data"],
     y=df_diff_cash["Cash_diferenca"],
@@ -406,8 +399,6 @@ if st.sidebar.button("Visualizar Comparação de Cenários"):
 
 st.info("Passe o mouse sobre os gráficos para visualizar os valores com duas casas decimais.")
 
-
-st.info("Passe o mouse sobre os gráficos para visualizar os valores com duas casas decimais.")
 
 
 
