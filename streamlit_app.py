@@ -12,11 +12,12 @@ st.set_page_config(page_title="Simulação de Cancelamento de Rotas", layout="wi
 @st.cache_data
 def gerar_dados():
     """
-    Gera dados para 31 dias (janeiro), com 20 rotas.
-    GMV_baseline varia de 900 a 1200 por rota/dia,
-    Cash_baseline varia de -100 a 500, podendo ficar negativo.
+    Gera dados para 31 dias a partir de hoje, com 20 rotas.
+    GMV_baseline varia de 500 a 2000 por rota/dia,
+    Cash_baseline varia de -500 a 1000, podendo ficar negativo.
     """
-    datas = pd.date_range(start="2023-01-01", end="2023-01-31", freq="D")
+    # Gere datas a partir de hoje (data atual)
+    datas = pd.date_range(start=datetime.now().date(), periods=31, freq="D")
     num_rotas = 20
     rotas = [f"R{i+1}" for i in range(num_rotas)]
     regionais = [f"Regional {(i % 3) + 1}" for i in range(num_rotas)]  # Exemplo de regionais
@@ -24,12 +25,12 @@ def gerar_dados():
     dados = []
     for data in datas:
         for i, rota in enumerate(rotas):
-            gmv_baseline = np.random.randint(500, 1600)  # Faixa de 900 a 1200
-            cash_baseline = np.random.randint(-300, 600)  # Pode ser negativo
+            gmv_baseline = np.random.randint(500, 2000)  # Faixa de 500 a 2000
+            cash_baseline = np.random.randint(-500, 1000)  # Faixa de -500 a 1000
 
             # Realizado com base no baseline + ruído
-            gmv_realizado = gmv_baseline + np.random.randint(-200, 200)
-            cash_realizado = cash_baseline + np.random.randint(-100, 100)
+            gmv_realizado = gmv_baseline + np.random.randint(-100, 100)
+            cash_realizado = cash_baseline + np.random.randint(-50, 50)
 
             dados.append({
                 "Data": data,
@@ -140,9 +141,9 @@ df_agg_total = calcular_meta_diluida(df_agg_total, meta_mensal_gmv, meta_mensal_
 df_agg_sim = calcular_meta_diluida(df_agg_sim, meta_mensal_gmv, meta_mensal_cash)
 
 # -------------------------
-# Cálculo da Diferença (Sim - Realizado) para visualização
+# Cálculo da Diferença (Sim - Realizado)
 # -------------------------
-# Vamos mesclar df_agg_total e df_agg_sim para GMV:
+# Para GMV:
 df_diff_gmv = pd.merge(
     df_agg_total[["Data", "GMV_realizado"]],
     df_agg_sim[["Data", "GMV_realizado"]].rename(columns={"GMV_realizado": "GMV_sim"}),
@@ -151,7 +152,7 @@ df_diff_gmv = pd.merge(
 )
 df_diff_gmv["GMV_diferenca"] = df_diff_gmv["GMV_sim"] - df_diff_gmv["GMV_realizado"]
 
-# O mesmo para Cash:
+# Para Cash:
 df_diff_cash = pd.merge(
     df_agg_total[["Data", "Cash_realizado"]],
     df_agg_sim[["Data", "Cash_realizado"]].rename(columns={"Cash_realizado": "Cash_sim"}),
@@ -218,7 +219,7 @@ fig_gmv.update_layout(
     hovermode="x unified"
 )
 
-# Formato do hover (duas casas decimais)
+# Formata o hover para duas casas decimais
 for trace in fig_gmv.data:
     trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
 
@@ -277,7 +278,6 @@ fig_cash.update_layout(
     hovermode="x unified"
 )
 
-# Formato do hover (duas casas decimais)
 for trace in fig_cash.data:
     trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
 
@@ -309,6 +309,7 @@ if st.sidebar.button("Visualizar Comparação de Cenários"):
         st.sidebar.info("Nenhum cenário salvo ainda.")
 
 st.info("Passe o mouse sobre os gráficos para visualizar os valores com duas casas decimais.")
+
 
 
 
