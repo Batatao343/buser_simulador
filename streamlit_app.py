@@ -31,8 +31,8 @@ def gerar_dados():
             cash_baseline = np.random.randint(-300, 1000)
 
             # Realizado com base no baseline + algum ruído
-            gmv_realizado = gmv_baseline + np.random.randint(-100, 100)
-            cash_realizado = cash_baseline + np.random.randint(-50, 50)
+            gmv_realizado = gmv_baseline + np.random.randint(-300, 300)
+            cash_realizado = cash_baseline + np.random.randint(-100, 100)
 
             dados.append({
                 "Data": data,
