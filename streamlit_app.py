@@ -45,9 +45,9 @@ def gerar_dados():
     for data in datas:
         for rota in rotas:
             gmv_base = np.random.randint(500, 2000)
-            cash_base = np.random.randint(-500, 1000)
-            gmv_real = gmv_base + np.random.randint(-100, 100)
-            cash_real = cash_base + np.random.randint(-50, 50)
+            cash_base = np.random.randint(-700, 1000)
+            gmv_real = gmv_base + np.random.randint(-400, 400)
+            cash_real = cash_base + np.random.randint(-150, 150)
             
             dados.append({
                 "Data": data,
