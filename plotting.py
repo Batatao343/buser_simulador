@@ -68,7 +68,7 @@ def plot_gmv_acumulado(
         x=df_baseline_meta["Data"],
         y=df_baseline_meta["GMV_baseline_acumulado"],
         mode="lines",
-        name="Baseline Histórico (Acumul.)",
+        name="Baseline Histórico",
         line=dict(color="gray", dash="dash"),
         opacity=0.7
     ))
@@ -76,7 +76,7 @@ def plot_gmv_acumulado(
         x=df_baseline_meta["Data"],
         y=df_baseline_meta["GMV_meta_acumulada"],
         mode="lines",
-        name="Meta Hist. Diluída (Acumul.)",
+        name="Meta ajustada",
         line=dict(color="green", dash="dot"),
         opacity=0.7
     ))
@@ -92,7 +92,7 @@ def plot_gmv_acumulado(
         x=df_base_past["Data"],
         y=df_base_past["GMV_acumulado"],
         mode="lines",
-        name="Realizado/Previsto (Passado)",
+        name="Realizado",
         line=dict(color="#00008B", width=3, dash="solid")
     ))
     # Azul tracejada (futuro)
@@ -100,7 +100,7 @@ def plot_gmv_acumulado(
         x=df_base_future["Data"],
         y=df_base_future["GMV_acumulado"],
         mode="lines",
-        name="Realizado/Previsto (Futuro)",
+        name="Previsto",
         line=dict(color="#00008B", width=3, dash="dash")
     ))
 
@@ -141,7 +141,7 @@ def plot_gmv_acumulado(
         x=df_sim_check["Data"],
         y=df_sim_check["GMV_acumulado_alinhado"],
         mode="lines",
-        name="Simulação (Canceladas)",
+        name="Simulação - Check de cancelamento",
         line=dict(color="red", width=3)
     ))
 
@@ -235,7 +235,7 @@ def plot_cash_acumulado(
         x=df_baseline_meta["Data"],
         y=df_baseline_meta["Cash_baseline_acumulado"],
         mode="lines",
-        name="Baseline Histórico (Acumul.)",
+        name="Baseline Histórico",
         line=dict(color="gray", dash="dash"),
         opacity=0.7
     ))
@@ -243,7 +243,7 @@ def plot_cash_acumulado(
         x=df_baseline_meta["Data"],
         y=df_baseline_meta["Cash_meta_acumulada"],
         mode="lines",
-        name="Meta Hist. Diluída (Acumul.)",
+        name="Meta Ajustada",
         line=dict(color="green", dash="dot"),
         opacity=0.7
     ))
@@ -255,14 +255,14 @@ def plot_cash_acumulado(
         x=df_base_past["Data"],
         y=df_base_past["Cash_acumulado"],
         mode="lines",
-        name="Realizado/Previsto (Passado)",
+        name="Realizado",
         line=dict(color="#00008B", width=3, dash="solid")
     ))
     fig.add_trace(go.Scatter(
         x=df_base_future["Data"],
         y=df_base_future["Cash_acumulado"],
         mode="lines",
-        name="Realizado/Previsto (Futuro)",
+        name="Previsto",
         line=dict(color="#00008B", width=3, dash="dash")
     ))
 
@@ -293,7 +293,7 @@ def plot_cash_acumulado(
         x=df_sim_check["Data"],
         y=df_sim_check["Cash_acumulado_alinhado"],
         mode="lines",
-        name="Simulação (Canceladas)",
+        name="Simulação - Check de cancelamento",
         line=dict(color="red", width=3)
     ))
 
