@@ -1,4 +1,4 @@
-# plotting.py
+## plotting.py
 
 import plotly.graph_objects as go
 import pandas as pd
@@ -236,4 +236,76 @@ def plot_cash_acumulado(
         opacity=0.7
     ))
 
-    df_base_p
+    df_base_past = df_base_acum[df_base_acum["Data"] < hoje_dt]
+    df_base_future = df_base_acum[df_base_acum["Data"] >= hoje_dt]
+    fig.add_trace(go.Scatter(
+        x=df_base_past["Data"],
+        y=df_base_past["Cash_acumulado"],
+        mode="lines",
+        name="Realizado",
+        line=dict(color="#00008B", width=3, dash="solid")
+    ))
+    fig.add_trace(go.Scatter(
+        x=df_base_future["Data"],
+        y=df_base_future["Cash_acumulado"],
+        mode="lines",
+        name="Previsto",
+        line=dict(color="#00008B", width=3, dash="dash")
+    ))
+
+    df_base_before_check = df_base_acum[df_base_acum["Data"] < check_start]
+    if not df_base_before_check.empty:
+        base_cutoff_cash = df_base_before_check["Cash_acumulado"].max()
+    else:
+        base_cutoff_cash = 0
+
+    df_sim_check = df_sim_acum[df_sim_acum["Data"] >= check_start].copy()
+
+    if len(rotas_canceladas) == 0:
+        if not df_sim_check.empty:
+            df_sim_check["Cash_acumulado_alinhado"] = df_sim_check["Cash_acumulado"]
+        else:
+            df_sim_check["Cash_acumulado_alinhado"] = df_sim_check["Cash_acumulado"]
+    else:
+        if not df_sim_check.empty:
+            primeiro_valor_sim = df_sim_check.iloc[0]["Cash_acumulado"]
+            df_sim_check["Cash_acumulado_alinhado"] = base_cutoff_cash + (df_sim_check["Cash_acumulado"] - primeiro_valor_sim)
+        else:
+            df_sim_check["Cash_acumulado_alinhado"] = df_sim_check["Cash_acumulado"]
+
+    fig.add_trace(go.Scatter(
+        x=df_sim_check["Data"],
+        y=df_sim_check["Cash_acumulado_alinhado"],
+        mode="lines",
+        name="Simulação - Check de cancelamento",
+        line=dict(color="red", width=3)
+    ))
+
+    df_diff_check = df_diff[df_diff["Data"] >= check_start].copy()
+    if not df_diff_check.empty and not df_sim_check.empty:
+        df_diff_check = df_diff_check.merge(
+            df_sim_check[["Data","Cash_acumulado_alinhado"]],
+            on="Data",
+            how="left"
+        )
+        df_diff_check["Cash_diferenca_alinhada"] = df_diff_check["Cash_acumulado_alinhado"] - df_diff_check["Cash_acumulado"]
+    else:
+        df_diff_check["Cash_diferenca_alinhada"] = df_diff_check["Cash_diferenca"]
+
+    fig.add_trace(go.Scatter(
+        x=df_diff_check["Data"],
+        y=df_diff_check["Cash_diferenca_alinhada"],
+        mode="lines",
+        name="Diferença Acumulada",
+        line=dict(color="red", width=2, dash="dot")
+    ))
+
+    fig.update_layout(
+        title="Cash Acumulado - Base vs. Simulação",
+        xaxis_title="Data",
+        yaxis_title="Cash Acumulado",
+        hovermode="x unified"
+    )
+    for trace in fig.data:
+        trace.hovertemplate = f"{trace.name}: "+"%{y:.2f}"+"<extra></extra>"
+    return fig
